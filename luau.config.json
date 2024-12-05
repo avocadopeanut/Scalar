@@ -1,0 +1,9 @@
+{
+  "diagnostics": {
+    "enable": false,
+    "typeCheckingMode": "nonstrict"
+  },
+  "workspace": {
+    "library": ["src"]
+  }
+}

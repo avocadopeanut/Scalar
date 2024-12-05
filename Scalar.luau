@@ -108,22 +108,4 @@ function Scalar.__newindex(self, i, v)
     end
 end
 
---\\ Public Fields
-
-Super.Default = Super.new(1)
-
-Super.Default.Add = Super:Scope(function(x, a)
-    return x + a
-end)
-
-Super.Default.Scale = Super:Scope(function(x, a)
-    return x * a
-end)
-
-Super.Default.Add.Test = 3 --> 4
-Super.Default.Scale.Test2 = 0.5
-
-print(Super.Default:Get()) --> 2
-print(Super.Default:Get(-1)) --> 1
-
 return Scalar
