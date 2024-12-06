@@ -2,10 +2,10 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Run Luau",
+            "label": "Run Lua",
             "type": "shell",
             "command": "${workspaceFolder}\\execute.bat",
-            "args": ["${workspaceFolder}\\init.luau"],
+            "args": ["${workspaceFolder}\\init.lua"],
             "group": {
                 "kind": "build",
                 "isDefault": true
@@ -17,7 +17,7 @@
                 "focus": false,
                 "panel": "shared",
                 "showReuseMessage": false
-            }
+            },
         }
-  ]
+    ]
 }
