@@ -44,7 +44,7 @@ local function __iter(self)
 
         index += 1
 
-        while list[index] == nil and index ~= len do
+        while list[index] == nil and index < len do
             index += 1
         end
 
