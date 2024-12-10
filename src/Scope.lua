@@ -4,6 +4,36 @@ export type Scope<T> = {
 
 --\\ Private Methods
 
+local function __len(self): number
+    return #getmetatable(self).__list
+end
+
+local function __iter(self): typeof(pairs)
+    local list = getmetatable(self).__list
+    local len = #list
+    local index = 0
+
+    return function()
+        if len == 0 then return end
+
+        index += 1
+
+        while list[index] == nil and index < len do
+            index += 1
+        end
+
+        local result = list[index]
+
+        if result ~= nil then
+            return unpack(result)
+        end
+    end
+end
+
+local function __call(self, ...): number
+    return getmetatable(self).__callback(...)
+end
+
 local function __index(self, i: string): any
     local list = getmetatable(self).__list
 
@@ -34,34 +64,6 @@ local function __newindex(self, i: string, v: any)
     table.insert(list, {i, v})
 end
 
-local function __iter(self)
-    local list = getmetatable(self).__list
-    local len = #list
-    local index = 0
-
-    return function()
-        if len == 0 then return end
-
-        index += 1
-
-        while list[index] == nil and index < len do
-            index += 1
-        end
-
-        local result = list[index]
-
-        if result == nil then
-            return result
-        else
-            return result[1], result[2]
-        end
-    end
-end
-
-local function __len(self): number
-    return #getmetatable(self).__list
-end
-
 local function __tostring(self): string
     return "<Scope>"
 end
@@ -73,16 +75,14 @@ return function(callback: (number, any) -> number, order: number?)
     assert(order == nil or type(order) == "number", "Argument #2 must be a number or nil.")
 
     return setmetatable({}, {
-        __call = function(_, ...)
-            return callback(...)
-        end,
-
         __type = "Scope",
         __order = type(order) == "number" and order or nil,
+        __callback = callback
         __list = {},
 
         __len = __len,
         __iter = __iter,
+        __call = __call,
         __index = __index,
         __newindex = __newindex,
         __tostring = __tostring,

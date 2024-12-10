@@ -4,7 +4,6 @@ local Scope = require("./src/Scope")
 local example = Scalar.new(2)
 
 example.Add = Scope (function(x, a)
-    print(x, "+", a)
     return x + a
 end)
 
@@ -15,8 +14,6 @@ end)
 example.Exponent = Scope (function(x, a)
     return x ^ a
 end)
-
-print((2^2)^3) --> 64
 
 example.Exponent.A = 2
 example.Exponent.B = 3
