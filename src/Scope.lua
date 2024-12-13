@@ -1,14 +1,68 @@
+--[[
+
+    avocado (@avodey) -w-
+
+    Creates an object containing a list of values and a callback.
+
+    12/11/24
+
+]]
+
+local Super = {}
+local Scope = {}
+
+local Connection = require("./Connection")
+
 export type Scope<T> = {
     [any]: T
-} & (number, T) -> number
+} & typeof(Scope) & (number, T) -> number
 
---\\ Private Methods
+--\\ Public Methods
 
-local function __len(self): number
+function Super.new<T>(callback: (T, any) -> T, order: number?): Scope<T>
+    assert(type(callback) == "function", "Argument #1 must be a callback.")
+    assert(order == nil or type(order) == "number", "Argument #2 must be a number or nil.")
+
+    local meta = table.clone(Scope)
+    meta.__type = "Scope",
+    meta.__order = tonumber(order),
+    meta.__callback = callback
+    meta.__list = {}
+    meta.__binds = {}
+
+    return setmetatable({}, meta) :: Scope<T>
+end
+
+--\\ Instance Methods
+
+function Scope.Bind(self: Scope<any>, callback: () -> ())
+    assert(type(callback) == "function", "Argument #1 expects a callback.")
+    local meta = getmetatable(self)
+    return Connection(meta._binds, callback)
+end
+
+function Scope.GetOrder(self: Scope<any>): number?
+    return getmetatable(self).__order
+end
+
+function Scope.GetCallback(self: Scope<T>): (T, any) -> T
+    return getmetatable(self).__call
+end
+
+function Scope._Fire(self: Scope<any>)
+    local meta = getmetatable(self)
+    for _, callback in meta.__binds do
+        task.spawn(callback)
+    end
+end
+
+--\\ Instance Metamethods
+
+function Scope.__len(self): number
     return #getmetatable(self).__list
 end
 
-local function __iter(self): typeof(pairs)
+function Scope.__iter(self): typeof(pairs)
     local list = getmetatable(self).__list
     local len = #list
     local index = 0
@@ -30,11 +84,14 @@ local function __iter(self): typeof(pairs)
     end
 end
 
-local function __call(self, ...): number
+function Scope.__call(self, ...): number
     return getmetatable(self).__callback(...)
 end
 
-local function __index(self, i: string): any
+function Scope.__index(self, i: string): any
+    local value = rawget(Scope, i)
+    if value then return value end
+
     local list = getmetatable(self).__list
 
     for _, data in list do
@@ -46,15 +103,17 @@ local function __index(self, i: string): any
     return nil
 end
 
-local function __newindex(self, i: string, v: any)
+function Scope.__newindex(self, i: string, v: any)
     local list = getmetatable(self).__list
 
     for index, data in list do
         if data[1] == i then
             if v == nil then
                 table.remove(list, index)
-            else
+                self:_Fire()
+            elseif data[2] ~= v then
                 data[2] = v
+                self:_Fire()
             end
 
             return
@@ -62,29 +121,13 @@ local function __newindex(self, i: string, v: any)
     end
 
     table.insert(list, {i, v})
+    self:_Fire()
 end
 
-local function __tostring(self): string
+function Scope.__tostring(self): string
     return "<Scope>"
 end
 
---\\ Public Methods
+table.freeze(Scope)
 
-return function(callback: (number, any) -> number, order: number?)
-    assert(type(callback) == "function", "Argument #1 must be a callback.")
-    assert(order == nil or type(order) == "number", "Argument #2 must be a number or nil.")
-
-    return setmetatable({}, {
-        __type = "Scope",
-        __order = type(order) == "number" and order or nil,
-        __callback = callback
-        __list = {},
-
-        __len = __len,
-        __iter = __iter,
-        __call = __call,
-        __index = __index,
-        __newindex = __newindex,
-        __tostring = __tostring,
-    })
-end
+return Super

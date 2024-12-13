@@ -2,16 +2,17 @@
 
     avocado (@avodey) -w-
 
-    A library to dynamically adjust numbers.
+    A library to dynamically adjust values.
 
-    12/4/24
+    12/11/24
 
 ]]
 
 local Super = {}
-local Scalar = {}
+local Scalar = {__type = "Scalar"}
 
 local Scope = require("./Scope")
+local Connection = require("./Connection")
 
 Super.Scope = Scope
 
@@ -20,8 +21,9 @@ Super.Scope = Scope
 export type Scalar = {
     [string]: Scope.Scope<any>,
 
-    _Base: number,
-    _Container: {{string|Scope.Scope<any>}}
+    _Base: any,
+    _Binds: {(any) -> ()},
+    _Container: {{string|Scope.Scope<any>}},
 } & typeof(Scalar)
 
 --\\ Private Methods
@@ -35,73 +37,87 @@ local function isScope(item): boolean
     return false
 end
 
+local function isScalar(item): boolean
+    return type(item) == "table" and getmetatable(item) == Scalar
+end
+
 --\\ Public Methods
 
-function Super.new(base): Scalar
+function Super.new(base: any?): Scalar
     return setmetatable({
         _Base = base or 0,
+        _Binds = {},
         _Container = {},
     } :: Scalar, Scalar)
 end
 
+function Super:IsValid(item): boolean
+    return isScalar(item)
+end
+
 --\\ Instance Methods
 
-function Scalar.Get(self, base: number?): number
+function Scalar.Get(self: Scalar, base: any?): any -- TO TEST
     local result = base or self._Base
 
-    for _, data in self._Container do
+    for i, data in self._Container do
         local scope = data[2]
-        for _, parameter in scope do
-            result = scope(result, parameter)
+
+        if isScope(scope) then
+            for _, parameter in scope do
+                if isScalar(parameter) then
+                    parameter = parameter:Get()
+                end
+
+                result = scope(result, parameter)
+            end
+        elseif isScalar(scope) then
+            result = scope:Get(result)
+        elseif type(scope) == "function" then
+            result = scope(result)
+        else
+            error(`Bad member '{i}'. Expected Scope or Scalar, got '{typeof(data)}'.`, 2)
         end
     end
 
     return result
 end
 
-function Scalar.GetBase(self): number
-    return self._Base or 0
+function Scalar.GetBase(self: Scalar): any
+    return self._Base
 end
 
-function Scalar.Extend(self) -- TODO
+function Scalar.Bind(self: Scalar, callback: (any) -> ()) -- TO TEST
+    if type(callback) ~= "function" then error("Argument #1 must be a callback.") end
+    return Connection(self._Binds, callback)
+end
+
+function Scalar.Extend(self: Scalar) -- TO TEST
     local next = table.clone(self)
     next._Container = table.clone(next._Container)
+
+    for i, scope in next._Container do
+        next._Container[i] = Scope(scope:GetCallback())
+    end
+
     return next
+end
+
+function Scalar._Fire(self: Scalar)
+    local result = self:Get()
+
+    for _, bind in self._Binds do
+        task.spawn(bind, result)
+    end
 end
 
 --\\ Instance Metamethods
 
-function Scalar.__index(self, i: string)
-    local value = rawget(Scalar, i)
-    if value ~= nil then return value end
-
-    for _, data in self._Container do
-        if data[1] == i then
-            return data[2]
-        end
-    end
-
-    return nil
+function Scalar.__len(self: Scalar): number
+    return #self._Container
 end
 
-function Scalar.__newindex(self, i: string, v: Scope.Scope<any>)
-    assert(rawget(Scalar, i) == nil, tostring(i) .. " is read only.")
-    assert(isScope(v), "Only new scopes may be assigned.")
-
-    local order = getmetatable(v).__order
-
-    if order then
-        table.insert(self._Container, order, {i, v})
-    else
-        table.insert(self._Container, {i, v})
-    end
-end
-
-function Scalar.__call(self: Scalar, base: number?)
-    return self:Get(base)
-end
-
-function Scalar.__iter(self: Scalar)
+function Scalar.__iter(self: Scalar) -- TO TEST
     local list = self._Container
     local len = #list
     local index = 0
@@ -125,8 +141,42 @@ function Scalar.__iter(self: Scalar)
     end
 end
 
-function Scalar.__len(self: Scalar): number
-    return #self._Container
+function Scalar.__call(self: Scalar, base: number?)
+    return self:Get(base)
 end
+
+function Scalar.__index(self, i: string)
+    local value = rawget(Scalar, i)
+    if value ~= nil then return value end
+
+    for _, data in self._Container do
+        if data[1] == i then
+            return data[2]
+        end
+    end
+
+    return nil
+end
+
+function Scalar.__newindex(self, name: string, scope: Scope.Scope<any>) -- TO TEST
+    assert(isScope(scope), "Only new scopes may be assigned.")
+
+    local order = scope:GetOrder()
+
+    for i, pair in self._Container do
+        if pair[1] == name then
+            table.remove(self._Container, i)
+            break
+        end
+    end
+
+    if order then
+        table.insert(self._Container, order, {name, scope})
+    else
+        table.insert(self._Container, {name, scope})
+    end
+end
+
+table.freeze(Scalar)
 
 return Super

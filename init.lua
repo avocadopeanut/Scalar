@@ -1,5 +1,5 @@
 local Scalar = require("./src/Scalar")
-local Scope = require("./src/Scope")
+local Scope = Scalar.Scope
 
 local example = Scalar.new(2)
 
