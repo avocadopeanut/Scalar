@@ -14,7 +14,7 @@ local Scalar = {__type = "Scalar"}
 local Scope = require("./Scope")
 local Connection = require("./Connection")
 
-Super.Scope = Scope
+Super.Scope = Scope.new
 
 --\\ Types
 
@@ -97,7 +97,7 @@ function Scalar.Extend(self: Scalar) -- TO TEST
     next._Container = table.clone(next._Container)
 
     for i, scope in next._Container do
-        next._Container[i] = Scope(scope:GetCallback())
+        next._Container[i] = Scope.new(scope:GetCallback())
     end
 
     return next
@@ -107,7 +107,7 @@ function Scalar._Fire(self: Scalar)
     local result = self:Get()
 
     for _, bind in self._Binds do
-        task.spawn(bind, result)
+        coroutine.wrap(bind)(result)
     end
 end
 
@@ -177,6 +177,7 @@ function Scalar.__newindex(self, name: string, scope: Scope.Scope<any>) -- TO TE
     end
 end
 
+table.freeze(Super)
 table.freeze(Scalar)
 
 return Super

@@ -24,8 +24,8 @@ function Super.new<T>(callback: (T, any) -> T, order: number?): Scope<T>
     assert(order == nil or type(order) == "number", "Argument #2 must be a number or nil.")
 
     local meta = table.clone(Scope)
-    meta.__type = "Scope",
-    meta.__order = tonumber(order),
+    meta.__type = "Scope"
+    meta.__order = tonumber(order)
     meta.__callback = callback
     meta.__list = {}
     meta.__binds = {}
@@ -45,14 +45,14 @@ function Scope.GetOrder(self: Scope<any>): number?
     return getmetatable(self).__order
 end
 
-function Scope.GetCallback(self: Scope<T>): (T, any) -> T
+function Scope.GetCallback<T>(self: Scope<T>): (T, any) -> T
     return getmetatable(self).__call
 end
 
 function Scope._Fire(self: Scope<any>)
     local meta = getmetatable(self)
     for _, callback in meta.__binds do
-        task.spawn(callback)
+        coroutine.wrap(callback)()
     end
 end
 
@@ -128,6 +128,7 @@ function Scope.__tostring(self): string
     return "<Scope>"
 end
 
+table.freeze(Super)
 table.freeze(Scope)
 
 return Super
