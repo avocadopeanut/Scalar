@@ -29,8 +29,7 @@ function Super.new<T>(callback: (T, any) -> T, order: number?): Scope<T>
     meta.__callback = callback
     meta.__list = {}
     meta.__binds = {}
-
-    return setmetatable({}, meta) :: Scope<T>
+    return setmetatable({}, table.freeze(meta)) :: Scope<T>
 end
 
 --\\ Instance Methods
@@ -47,6 +46,11 @@ end
 
 function Scope.GetCallback<T>(self: Scope<T>): (T, any) -> T
     return getmetatable(self).__call
+end
+
+function Scope.Clone<T>(self: Scope<T>): Scope<T>
+    local meta = getmetatable(self)
+    return Super.new(meta.__callback, meta.__order)
 end
 
 function Scope._Fire(self: Scope<any>)
@@ -68,7 +72,7 @@ function Scope.__iter(self): typeof(pairs)
     local index = 0
 
     return function()
-        if len == 0 then return end
+        if len == 0 then return nil end
 
         index += 1
 
@@ -81,11 +85,13 @@ function Scope.__iter(self): typeof(pairs)
         if result ~= nil then
             return unpack(result)
         end
+
+        return nil
     end
 end
 
-function Scope.__call(self, ...): number
-    return getmetatable(self).__callback(...)
+function Scope.__call<T>(self: Scope<T>, a: T, b: any): T
+    return getmetatable(self).__callback(a, b)
 end
 
 function Scope.__index(self, i: string): any

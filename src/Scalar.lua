@@ -94,10 +94,10 @@ end
 
 function Scalar.Extend(self: Scalar) -- TO TEST
     local next = table.clone(self)
-    next._Container = table.clone(next._Container)
+    next._Container = table.create(#self._Container)
 
-    for i, scope in next._Container do
-        next._Container[i] = Scope.new(scope:GetCallback())
+    for i, scope in self._Container do
+        next._Container[i] = scope:Clone()
     end
 
     return next

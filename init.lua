@@ -15,6 +15,10 @@ example.Exponent = Scope (function(x, a)
     return x ^ a
 end)
 
+example:Bind(function(new)
+    print("Value:", new)
+end)
+
 example.Exponent.A = 2
 example.Exponent.B = 3
 
